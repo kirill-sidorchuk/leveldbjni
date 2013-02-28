@@ -60,7 +60,7 @@
     <dependency>
       <groupId>org.iq80.leveldb</groupId>
       <artifactId>leveldb-api</artifactId>
-      <version>${leveldb-api-version}</version>
+      <version>0.7-SNAPSHOT</version>
     </dependency>
   </dependencies>
 

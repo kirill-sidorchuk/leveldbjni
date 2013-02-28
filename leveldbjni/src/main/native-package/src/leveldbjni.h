@@ -75,6 +75,7 @@
 #include "leveldb/comparator.h"
 #include "leveldb/env.h"
 #include "leveldb/slice.h"
+#include "leveldb/filter_policy.h"
 
 struct JNIComparator : public leveldb::Comparator {
   jobject target;
@@ -99,6 +100,34 @@ struct JNIComparator : public leveldb::Comparator {
   void FindShortSuccessor(std::string*) const { }
 };
 
+/*
+struct JNIFilterPolicy: public leveldb::FilterPolicy {
+  jobject target;
+  jmethodID key_may_match_method;
+  jmethodID create_filter_method;
+  const char *name;
+
+  void CreateFilter(const leveldb::Slice* keys, int n, std::string* dst) const {
+     JNIEnv *env;
+     if ( hawtjni_attach_thread(&env, "leveldb") ) {
+       return 0;
+     }
+
+     env->CallVoidMethod(target,create_filter_method,)
+
+     hawtjni_detach_thread();
+  }
+
+    bool KeyMayMatch(const Slice& key, const Slice& filter) const {
+      // Use builtin bloom filter code after removing trailing spaces
+      return builtin_policy_->KeyMayMatch(RemoveTrailingSpaces(key), filter);
+    }
+  const char* Name() const {
+     return name;
+  }
+
+}
+*/
 struct JNILogger : public leveldb::Logger {
   jobject target;
   jmethodID log_method;

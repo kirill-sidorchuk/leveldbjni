@@ -32,6 +32,7 @@
 package org.fusesource.leveldbjni.test;
 
 import junit.framework.TestCase;
+import org.fusesource.leveldbjni.BloomFilterPolicyFactory;
 import org.fusesource.leveldbjni.JniDBFactory;
 import org.fusesource.leveldbjni.internal.JniDB;
 import org.iq80.leveldb.*;
@@ -346,6 +347,79 @@ public class DBTest extends TestCase {
     }
 
     @Test
+    public void testBloomFilterPolicy() throws IOException {
+
+        final int N = 10000;
+        Random random = new Random(0);
+
+        // creating and filling database
+        Options options = new Options().createIfMissing(true);
+        File path = getTestDirectory(getName());
+        DB db = null;
+        try {
+            db = factory.open(path, options);
+
+            WriteBatch writeBatch = db.createWriteBatch();
+            try {
+
+                for (int i = 0; i < N; i++) {
+                    final String stringKey = Integer.toString(i);
+                    final byte[] key = JniDBFactory.bytes(stringKey);
+                    byte[] value = JniDBFactory.bytes(Integer.toString(random.nextInt()));
+                    writeBatch.put(key, value);
+                }
+
+                db.write(writeBatch);
+            } finally {
+                writeBatch.close();
+            }
+
+        } finally {
+            if (db != null) {
+                db.close();
+            }
+        }
+
+        // reading database with no filters
+        Options optionsNoFilters = new Options().createIfMissing(false);
+        long sequentialReadNoFiltersMs;
+        sequentialReadNoFiltersMs = sequentalReadBF(N, path, optionsNoFilters);
+        System.out.printf("Sequential read no filters, time=%d ms\n", sequentialReadNoFiltersMs);
+
+
+        // reading database with bloom filter
+        final FilterPolicy bloomFilterPolicy = BloomFilterPolicyFactory.newBloomFilterPolicy(10);
+        Options optionsBloomFilter = new Options().createIfMissing(false).filterPolicy(bloomFilterPolicy);
+        long sequentialReadBloomFilterMs;
+        sequentialReadBloomFilterMs = sequentalReadBF(N, path, optionsBloomFilter);
+        System.out.printf("Sequential read with bloom filter, time=%d ms\n", sequentialReadBloomFilterMs);
+    }
+
+    private long sequentalReadBF(int n, File path, Options optionsBloomFilter) throws IOException {
+        DB db = null;
+        long readTime;
+        try {
+            db = factory.open(path, optionsBloomFilter);
+
+            readTime = System.currentTimeMillis();
+            for (int i = 0; i < n; i++) {
+                final String stringKey = Integer.toString(i);
+                final byte[] key = JniDBFactory.bytes(stringKey);
+                final byte[] value = db.get(key);
+                assertNotNull("key not found: " + stringKey, value);
+            }
+            readTime = System.currentTimeMillis() - readTime;
+
+
+        } finally {
+            if (db != null) {
+                db.close();
+            }
+        }
+        return readTime;
+    }
+
+    @Test
     public void testLogger() throws IOException, InterruptedException, DBException {
         final List<String> messages = Collections.synchronizedList(new ArrayList<String>());
 
@@ -401,16 +475,16 @@ public class DBTest extends TestCase {
             //                                     Compactions
             //                         Level  Files Size(MB) Time(sec) Read(MB) Write(MB)
             //                         --------------------------------------------------
-            assertFalse(stats.contains("1        0        0         0"));
-            assertFalse(stats.contains("2        0        0         0"));
+            assertFalse(stats.contains("1        0        0"));//         0"));
+            assertFalse(stats.contains("2        0        0"));//         0"));
 
             // After the compaction, level 1 and 2 should not have any files in it..
             ((JniDB) db).compactRange(null, null);
 
             stats = db.getProperty("leveldb.stats");
             System.out.println(stats);
-            assertTrue(stats.contains("1        0        0         0"));
-            assertTrue(stats.contains("2        0        0         0"));
+            assertTrue(stats.contains("1        0        0"));//         0"));
+            assertTrue(stats.contains("2        0        0"));//         0"));
 
         }
         db.close();

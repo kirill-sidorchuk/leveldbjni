@@ -76,6 +76,11 @@ public class NativeOptions {
     private long comparator = comparatorObject.pointer();
 
     @JniField(flags={FIELD_SKIP})
+    private NativeFilterPolicy filterPolicyObject = null;
+    @JniField(cast="const leveldb::FilterPolicy*")
+    private long filter_policy = 0;
+
+    @JniField(flags={FIELD_SKIP})
     private NativeLogger infoLogObject = null;
     @JniField(cast="leveldb::Logger*")
     private long info_log = 0;
@@ -159,6 +164,19 @@ public class NativeOptions {
         }
         this.comparatorObject = comparator;
         this.comparator = comparator.pointer();
+        return this;
+    }
+
+    public NativeFilterPolicy filterPolicy() {
+        return filterPolicyObject;
+    }
+
+    public NativeOptions filterPolicy(NativeFilterPolicy policy) {
+        if( policy==null) {
+            throw new IllegalArgumentException("filter policy cannot be null");
+        }
+        this.filterPolicyObject = policy;
+        this.filter_policy = policy.pointer();
         return this;
     }
 

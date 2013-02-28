@@ -35,8 +35,6 @@ import org.fusesource.leveldbjni.internal.*;
 import org.iq80.leveldb.*;
 
 import java.io.*;
-import java.net.URL;
-import java.util.concurrent.Callable;
 
 /**
  * @author <a href="http://hiramchirino.com">Hiram Chirino</a>
@@ -90,6 +88,7 @@ public class JniDBFactory implements DBFactory {
 
         NativeCache cache = null;
         NativeComparator comparator=null;
+        NativeFilterPolicy filterPolicy=null;
         NativeLogger logger=null;
         NativeOptions options;
 
@@ -135,6 +134,17 @@ public class JniDBFactory implements DBFactory {
                 options.comparator(comparator);
             }
 
+            final FilterPolicy userFilterPolicy = value.filterPolicy();
+            if( userFilterPolicy !=null ) {
+                if( userFilterPolicy instanceof BloomFilterPolicyFactory.BloomFilterPolicy ) {
+                    filterPolicy = new NativeBloomFilterPolicy(
+                            ((BloomFilterPolicyFactory.BloomFilterPolicy) userFilterPolicy).bitsPerKey());
+                }
+                else {
+                    throw new UnsupportedOperationException("custom filter policies not supported");
+                }
+            }
+
             final Logger userLogger = value.logger();
             if(userLogger!=null) {
                 logger = new NativeLogger() {
@@ -153,6 +163,9 @@ public class JniDBFactory implements DBFactory {
             }
             if(comparator!=null){
                 comparator.delete();
+            }
+            if(filterPolicy!=null){
+                filterPolicy.delete();
             }
             if(logger!=null) {
                 logger.delete();
@@ -173,7 +186,7 @@ public class JniDBFactory implements DBFactory {
                 holder.close();
             }
         }
-        return new JniDB(db, holder.cache, holder.comparator, holder.logger);
+        return new JniDB(db, holder.cache, holder.comparator, holder.filterPolicy, holder.logger);
     }
 
     public void destroy(File path, Options options) throws IOException {
